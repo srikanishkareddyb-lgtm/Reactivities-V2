@@ -1,16 +1,18 @@
 import { TextField } from '@mui/material'
 import { Box, Button, Paper, Typography } from '@mui/material'
+import { useActivities } from '../../../lib/hooks/useActivities';
 
 
 type Props = {
     activity?: Activity;
     closeForm: () => void;
-    submitForm: (activity: Activity) => void;
 }
 
-export default function ActivityForm({ activity, closeForm, submitForm }: Props) {
+export default function ActivityForm({ activity, closeForm }: Props) {
     
-    const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
+    const {updateActivity, createActivity} = useActivities();
+
+    const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
         event.preventDefault();
         const formData = new FormData(event.currentTarget);
         const data: {[key: string]: FormDataEntryValue} = {};
@@ -18,8 +20,16 @@ export default function ActivityForm({ activity, closeForm, submitForm }: Props)
             data[key] = value;
         });
 
-        if(activity) data.id=activity.id
-        submitForm(data as unknown as Activity);
+      if (activity) {
+        data.id = activity.id
+        await updateActivity.mutateAsync(data as unknown as Activity);
+        closeForm();
+      }
+      else {
+        await createActivity.mutateAsync(data as unknown as Activity);
+        closeForm();
+      }
+        
     }
   return (
     <Paper sx={{ width: '200%', borderRadius: 3, padding: 3, margin: 1 }}>
@@ -30,15 +40,22 @@ export default function ActivityForm({ activity, closeForm, submitForm }: Props)
             <TextField name='title' label='Title' defaultValue={activity?.title} />
             <TextField name='description' label='Description' multiline rows={3} defaultValue={activity?.description} />
             <TextField name='category' label='Category' defaultValue={activity?.category} />
-            <TextField name='date' type='date' defaultValue={activity?.date} />
+            <TextField name='date' type='date' defaultValue={activity?.date
+              ? new Date(activity.date).toISOString().split('T')[0] 
+              : new Date().toISOString().split('T')[0]}
+            />
             <TextField name='city' label='City' defaultValue={activity?.city} />
             <TextField name='venue' label='Venue' defaultValue={activity?.venue} />
             <Box display='flex' justifyContent='end' gap={3}>
               <Button variant='outlined' color='inherit' onClick={closeForm}>
                 Cancel
               </Button>
-              <Button type='submit' variant='contained' color='primary'>
-                Submit
+              <Button
+                type='submit'
+                variant='contained'
+                color='primary'
+                disabled={updateActivity.isPending || createActivity.isPending}>
+                  Submit
               </Button>
             </Box>  
         </Box>  
